@@ -34,9 +34,14 @@ CODA_PROCESSI;
 
 //funzioni per gestire la coda dei priocessi
 
+//inizializza la coda
 void init_coda(char *array,char len,CODA_PROCESSI *coda);
 
+//restituisce indice prossimo processo senza levarlo dalla coda
 char prossimo_processo(CODA_PROCESSI *coda);
+
+//restituisce indice prossimo processo levandolo dalla coda
+char procDeq(CODA_PROCESSI *coda);
 
 //variabili private usate dal kernel
 

@@ -86,6 +86,20 @@ asm volatile (\
 "out __SREG__, r0\n\t"\
 "pop r0	\n\t": : "r" (stack_pointer_temp));
 
+//se il mio processo viene schedulato la prima volta devo solo "poppare" lo stack pointer
+#define SetStack()\
+asm volatile(\
+	"OUT __SP_L__, %A0	\n\t"\
+	"OUT __SP_H__, %B0	\n\t": : "r" (stack_pointer_temp))
+	
+//se il mio processo viene schedulato la prima volta devo "poppare" il puntatore alla funzione 
+#define portPushRetAddress()\
+	asm volatile(\
+		"mov r0, %A0	\n\t"\
+		"push r0	\n\t"\
+		"mov r0, %B0	\n\t"\
+		"push r0	\n\t": : "r" (funzione_corrente))
+		
 void OS_run(){//da migliorare e  capire
 	
 	OS_change();
@@ -108,7 +122,7 @@ void OS_change(){
 inline void OS_run_proc(){
 	//se è la prima esecuzione 
 	if(processi[running].status & OS_first_run){
-	setStack();//istruzioni assemly per poter far puntare lo stack pointer allo stack del nuovo processo schedulato
+	SetStack();//se è la prima volta che vengo eseguito devo solo "poppare"lo stack pointer iniziale
 	
 	   funzione_corrente= processi[running].funzione_processo;
 	    
