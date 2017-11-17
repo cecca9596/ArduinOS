@@ -100,8 +100,14 @@ asm volatile(\
 		"mov r0, %B0	\n\t"\
 		"push r0	\n\t": : "r" (funzione_corrente))
 		
-void OS_run(){//da migliorare e  capire
-	
+//processo che non fa nulla		
+void nulla(void *p)
+{
+	while(1);
+}
+		
+void OS_run(){
+	OS_crea_processo(255,nulla);
 	OS_change();
 }
 
@@ -118,6 +124,8 @@ void OS_change(){
 	OS_run_proc();//eseguo il processo
 	asm("ret");//istruzione assembly che mi permette di far puntare ip alla funzione del nuovo processo
 }
+
+
 //function inlining quindi questa funzione viene copiata dentro OS_change
 inline void OS_run_proc(){
 	//se è la prima esecuzione 
@@ -139,11 +147,9 @@ inline void OS_run_proc(){
 void OS_crea_processo(int priori,void* func){
 	if(num_proc>=MAX_PROC){
 		//ERRORE DA GESTIRE
+		return
 	}
-	//gestire errori es(se esiste processo con la stesso priori)
-	//....
-	//....
-	//....
+
 	//inserire nel array dei pcb il nuovo processo
 	processi[num_proc].priorita=priori;//priorita del processo creato
 	processi[num_proc].funzione_processo=funzione_corrente;//funzione da eseguire
@@ -151,7 +157,7 @@ void OS_crea_processo(int priori,void* func){
 	processi[num_proc].stack_pointer=(int*) &(processi[num_proc].stack[stack_dim-1]);
 	processi[num_proc].pid=num_proc;
 	
-	enq();//FUNZIONE DA DEFINIRE PER ACCODARE IL PROCESSO NELLA CODA DEI PROCESSI
+	procEnqenq(num_proc,processi,pronti);//accodo nella coda dei processi il nuovo processo creato"l'array processi serve solo se si buole accedere alla priorità del processo"
 	num_proc++;
 }
 
