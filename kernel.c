@@ -1,5 +1,7 @@
 #include "kernel.h"
 
+unsigned char num_proc = 0;
+
 //codice assemly per salvare nello stack lo stato del processo
 #define SAVE_CONTEXT()\
 asm volatile (\
@@ -91,21 +93,37 @@ asm volatile (\
 asm volatile(\
 	"OUT __SP_L__, %A0	\n\t"\
 	"OUT __SP_H__, %B0	\n\t": : "r" (stack_pointer_temp))
-	
-//se il mio processo viene schedulato la prima volta devo "poppare" il puntatore alla funzione 
+
+//se il mio processo viene schedulato la prima volta devo "poppare" il puntatore alla funzione
 #define portPushRetAddress()\
 	asm volatile(\
 		"mov r0, %A0	\n\t"\
 		"push r0	\n\t"\
 		"mov r0, %B0	\n\t"\
 		"push r0	\n\t": : "r" (funzione_corrente))
-		
-//processo che non fa nulla		
+
+//processo che non fa nulla
 void nulla(void *p)
 {
 	while(1);
 }
-		
+
+//Gestione dell'errore
+unsigned int OSGetError()
+{
+	return _errno;
+}
+
+void OSSetError(unsigned int errno)
+{
+	_errno=errno;
+	Serial.begin(115200);
+	Serial.print("ERROR: ");
+	Serial.println(_errno);
+	pinMode(13, OUTPUT);
+	digitalWrite(13, HIGH);
+}
+
 void OS_run(){
 	OS_crea_processo(255,nulla);
 	OS_change();
@@ -118,9 +136,9 @@ void OS_init(char numero_processi){
 
 void OS_change(){
 	SAVE_CONTEXT();//salva il contenuto dei registri
-	
+
 	OS_scheduling();//seleziono il prossimo processo da eseguire
-	
+
 	OS_run_proc();//eseguo il processo
 	asm("ret");//istruzione assembly che mi permette di far puntare ip alla funzione del nuovo processo
 }
@@ -128,26 +146,26 @@ void OS_change(){
 
 //function inlining quindi questa funzione viene copiata dentro OS_change
 inline void OS_run_proc(){
-	//se è la prima esecuzione 
+	//se è la prima esecuzione
 	if(processi[running].status & OS_first_run){
 	SetStack();//se è la prima volta che vengo eseguito devo solo "poppare"lo stack pointer iniziale
-	
+
 	   funzione_corrente= processi[running].funzione_processo;
-	    
+
 	   push_funzione();//istruzioni assembly per pushare la funzione corrente nello stack che verra chiamata grazie alla ret
    }
    //se non è la prima esecuzione
    else{
 	   RESTORE_CONTEXT();
    }
-	   
-		
+
+
 }
 
 void OS_crea_processo(int priori,void* func){
 	if(num_proc>=MAX_PROC){
-		//ERRORE DA GESTIRE
-		return
+		OSSetError(OS_ERR_MAX_PROCS);
+		return OSGetError();
 	}
 
 	//inserire nel array dei pcb il nuovo processo
@@ -156,7 +174,7 @@ void OS_crea_processo(int priori,void* func){
 	processi[num_proc].stack=(int *) calloc((size_t) stack_dim, sizeof( int));
 	processi[num_proc].stack_pointer=(int*) &(processi[num_proc].stack[stack_dim-1]);
 	processi[num_proc].pid=num_proc;
-	
+
 	procEnqenq(num_proc,processi,pronti);//accodo nella coda dei processi il nuovo processo creato"l'array processi serve solo se si buole accedere alla priorità del processo"
 	num_proc++;
 }
@@ -164,13 +182,13 @@ void OS_crea_processo(int priori,void* func){
 void OS_scheduling(){
 	//indice del prossimo processo da essere eseguito nel array dei pcb
 	char next_run=prossimo_processo(&pronti);
-	
+
 	//salvo nel pcb lo stack pointer salvato grazie a SAVE_CONTEXT
 	processi[running].stack_pointer=stack_pointer_temp;
-	
+
 	//nuovo stack pointer temporaneo
 	stack_pointer_temp=processi[next_run].stack_pointer;
-	
+
 	//scambio running
 	running=next_run;
 }

@@ -12,21 +12,24 @@
 #define OS_first_run 0b1;
 #define OS_blocked 0b10;
 
+//errors
+#define OS_ERR_MAX_PROCS	1	// superato numero massimo di processi	
+
 //process contol block di ogni processo che contiene informazioni varie
 typedef struct pcb{
-	
+
 	unsigned char pid;//numero unico del processo "1 byte unsigned=0-255 processi"
-	
+
 	unsigned char priorita;//priorita del processo usato per il suo scheduling
-	
+
 	unsigned char status;//stato del processo:bit 0 usato per il first run,bit 1 usato per bloccato
-	
+
 	unsigned long* stack;//puntatore alla zona di memoria dedicata all'uso dello stack del processo corrente
-	
+
 	unsigned long stack_pointer;//valore dello stack point corrente
-	
+
 	void* funzione_processo;//puntatore a funzione del processo
-		
+
 }PCB;
 
 typedef struct coda_processi{
@@ -81,5 +84,5 @@ void OS_change();
 //funzione che sceglie il processo da eseguire
 void OS_scheduling();
 
-//fa partire il processo 
+//fa partire il processo
 void OS_run_proc();
