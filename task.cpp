@@ -1,53 +1,85 @@
 #include "kernel.h"
 
-//funzioni per gestire la coda dei processi
 
+//mette in coda processo
+void enq(int pid, PCB *tasklist, CODA_PROCESSI *q)
+{
+	unsigned char sreg;
+	OSMakeAtomic(&sreg);
 
-
-//funzione che prende in input un array la sua lunghezza e una struttura dati per gestire la coda
-void init_coda(char *array,char len,CODA_PROCESSI *coda_p){
+	unsigned char i;
+	unsigned int iter=q->testa;
+	unsigned char flag=0;
 	
-    unsigned char i;
+	if(q->num_elem >= q->lunghezza)
+	{
+		OSExitAtomic(sreg);
+		return;
+	}
+			
+
+	else
+		iter=q->coda;
 		
-	coda_p->testa=0;
-	coda_p->coda=0;
-	coda_p->buf_proc=array;
-	coda_p->len=len;
+	q->coda=(q->coda+1)%q->lunghezza;
 	
 
-	for(i=0; i<len; i++)
-		coda_p->buf_proc[i]=255;
+	
+	
+	q->array[iter]=pid;
+	q->num_elem++;
+	OSExitAtomic(sreg);
+	
 }
-//restituisce l'indice nel array processi del prossimo processo da eseguire
-char prossimo_processo(CODA_PROCESSI* coda_p){
-	//se la coda dei ready è vuota
-	if(!coda_p->num_elem){
+//restituisce l'indice del prossimo processo da eseguire
+
+unsigned char prossimo_processo(CODA_PROCESSI *q)
+{
+     unsigned char sreg;
+	OSMakeAtomic(&sreg);
+	if(!q->num_elem)
+	{
+		OSExitAtomic(sreg);
 		return 255;
 	}
-	//se ci sono processi pronti
-	return coda_p->buf_proc[coda_p->testa];
+	else
+	{
+		OSExitAtomic(sreg);
+		return q->array[q->testa];
+	}
 }
-//restituiesce l'indice nel array processi ...... e lo leva dalla coda
-char procDeq(CODA_PROCESSI* coda_p){
-	    //se la coda è vuota
-	    if(!coda_p->num_elem){
-			return 255;
-		}
-		//se ci sono processi pronti
-		ret=coda_p->buf_proc[coda_p->testa];
-		coda_p->testa=(coda_p->testa+1)%coda_p->len;
-		coda_p->num_elem--;
-		return ret;
+//restituisce indice prossimo processo e lo leva dalla coda pronti
+unsigned char procDeq(CODA_PROCESSI *q)
+{
+	unsigned char sreg;
+	OSMakeAtomic(&sreg);
+
+	unsigned char ret=255;
+	if(q->num_elem>0)
+	{
+		ret=q->array[q->testa];
+		q->testa=(q->testa+1)%q->lunghezza;
+		q->num_elem--;
+	}
+OSExitAtomic(sreg);
+	return ret;
 }
 
-//accoda nella coda della coda :) il processo con il pid passato
-void procEnq(int pid,PCB * array_pcb,CODA_PROCESSI* coda_p){
-		if(coda_p->num_elem >= coda_p->len){
-			return;
-		}
-	
-	int iter=coda_p->coda;		
-	coda_p->coda=(coda_p->coda+1)%coda_p->len;	
-	coda_p->buf_proc[iter]=pid;
-	coda_p->num_elem++;
+//inizializza coda
+void init_coda(unsigned char *qbuf, unsigned char len, CODA_PROCESSI *q)
+{
+
+	unsigned char sreg;
+	OSMakeAtomic(&sreg);
+	unsigned char i;
+		
+	q->testa=0;
+	q->coda=0;
+	q->array=qbuf;
+	q->lunghezza=len;
+	q->num_elem=0;
+
+	for(i=0; i<len; i++)
+		q->array[i]=255;
+	OSExitAtomic(sreg);
 }
