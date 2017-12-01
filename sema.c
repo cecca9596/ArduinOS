@@ -24,7 +24,7 @@ void OSSem_wait(TOSSema *sema){
     prioEnq(running, processi, &sema->codaProcessi);
 
     //chiama lo scheduler
-    OSSwap();
+    OS_change();
 }
 
 void OSSem_post(TOSSema *sema){
@@ -38,7 +38,7 @@ void OSSem_post(TOSSema *sema){
     procEnq(wakeProc, processi, &pronti);
 
     //chiama lo scheduler
-		OSPrioSwap();
+		OS_change();
   }
   else if(sema->binario)
     sema->semaval=1;

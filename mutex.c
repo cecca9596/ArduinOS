@@ -13,7 +13,7 @@ void OSMutexWait(OSMutex *mutex){
     procEnq(running, processi, &mutex->blocked);
     processi[running].status |= _OS_BLOCKED;
     OSExitAtomic();
-		OSSwap();
+		OS_change();
   }
   else
     mutex->val = 0;
@@ -29,7 +29,7 @@ void OSMutexPost(OSMutex *mutex){
     processi[wakeProc].status &= _OS_BLOCKED;
     procEnq(wakeProc, processi, &pronti);
     OSExitAtomic();
-    OSPrioSwap();
+    OS_change();
   }
   else
     mutex->val = 1;
