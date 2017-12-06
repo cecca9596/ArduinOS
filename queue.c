@@ -1,68 +1,70 @@
+#include "kernel.h"
 #include "queue.h"
 
 // sblocca un processo bloccato in lettura(coda precedentemente vuota) e chiama lo scheduler
-void OSQueueUnblock(tQueue *queue){
+void OSQueueUnblock(OSQueue *queue, unsigned char csreg){
   processi[queue->blockproc].status &= ~_OS_BLOCKED;
 
 	// il processo appena sbloccato viene rimesso nella coda ready
-	procEnq(queue->blockproc, processi, &pronti);
+	enq(queue->blockproc, processi, &pronti);
 	queue->blockproc=255;
 
-	OSExitAtomic();
+	OSExitAtomic(csreg);
 
 	OS_change();
 }
 
-int OSDequeue(tQueue *queue){
+int OSDequeue(OSQueue *queue){
   int ret = 255;
-  OSMakeAtomic();
+  unsigned char csreg;
+  OSMakeAtomic(&csreg);
 
   if(!queue->count){ // se la coda è vuota
     //blocca il processo corrente
     queue->blockproc=running;
     processi[running].status|=_OS_BLOCKED;
 
-    OSExitAtomic();
+    OSExitAtomic(csreg);
 
     OS_change();
   }
 
-  OSMakeAtomic();
-
   ret=queue->qbuf[queue->head];
 
-  queue->head = (queue->head+1) % queue->len;
+  queue->head = (queue->head+1) % queue->length;
 	queue->count--;
 
-  OSExitAtomic();
+  OSExitAtomic(csreg);
 	return ret;
 }
 
-void OSMakeQueue(int *buffer, unsigned char length, tQueue *queue){
-  OSMakeAtomic();
+void OSMakeQueue(int *buffer, unsigned char length, OSQueue *queue){
+  unsigned char csreg;
+  OSMakeAtomic(&csreg);
   queue->count = 0;
   queue->length = 0;
   queue->head = 0;
   queue->tail = 0;
   queue->qbuf = buffer;
   queue->prioQ = 0;
-  OSExitAtomic();
+  OSExitAtomic(csreg);
 }
 
-void OSEnqueue(int data, tQueue *queue){
-  OSMakeAtomic();
+void OSEnqueue(int data, OSQueue *queue){
+  unsigned char csreg;
+  OSMakeAtomic(&csreg);
 
   //se la coda è piena ritorna
-  if(queue->count==queue->len)
+  if(queue->count==queue->length)
 		return;
 
   queue->qbuf[queue->tail]=data;
-  queue->tail = (queue->tail+1)  % queue->len;
+  queue->tail = (queue->tail+1)  % queue->length;
   queue->count++;
 
   //se qualcuno è bloccato in lettura viene sbloccato
   if(queue->blockproc!=255)
-		OSQueueUnblock(queue);
+		OSQueueUnblock(queue, csreg);
 
-  OSExitAtomic();
+  OSExitAtomic(csreg);
 }

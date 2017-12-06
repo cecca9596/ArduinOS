@@ -1,7 +1,7 @@
 #include "kernel.h"
 
 //variabile temporanea per lo status register
-unsigned char csreg; 
+unsigned char csreg;
 
 //variabile temporanea per lo stack pointer
 unsigned long current_stack_pointer;
@@ -75,7 +75,7 @@ asm volatile (\
 	"sts current_stack_pointer+1, r27	\n\t"\
 	"sts current_stack_pointer, r26	\n\t"\
 	: : "r" (csreg));
-	
+
 	#define RESTORE_CONTEXT()\
 asm volatile (\
 	"cli	\n\t"\
@@ -125,7 +125,7 @@ asm volatile(\
 	"OUT __SP_H__, %B0	\n\t"\
 	: : "r" (current_stack_pointer))
 
-//se è la prima volta che vengo schedulato devo settare la funzione da eseguire nello stack e passare l'argomento nei registri	
+//se è la prima volta che vengo schedulato devo settare la funzione da eseguire nello stack e passare l'argomento nei registri
 	#define PushRetAddress()\
 	asm volatile(\
 		"mov r0, %A0	\n\t"\
@@ -133,7 +133,7 @@ asm volatile(\
 		"mov r0, %B0	\n\t"\
 		"push r0	\n\t"\
          : : "r" (funzione))
-		
+
 // gestione errore
 
 void OSSetError(unsigned int errno)
@@ -144,11 +144,11 @@ void OSSetError(unsigned int errno)
 	Serial.println(_errno);
 	pinMode(13, OUTPUT);
 	digitalWrite(13, HIGH);
-}		
+}
 
 void OS_crea_processo( void (*func)(void *)){
 		unsigned char sreg;
-	
+
 	OSMakeAtomic(&sreg);
 //controllo se il numero di processi correnti è maggiore del numero massimo di processi
 	if(procCount>=10){
@@ -157,9 +157,9 @@ void OS_crea_processo( void (*func)(void *)){
 	}
 
 
-	
+
 	//inserisci il nuvo processo nel array dei pcb
-	
+
 	processi[procCount].funz=func;
 
 	processi[procCount].stack=(unsigned long *) calloc((size_t) 50, sizeof(unsigned long));
@@ -167,7 +167,7 @@ void OS_crea_processo( void (*func)(void *)){
 	processi[procCount].pid=procCount;
 	processi[procCount].status|=OS_FIRSTRUN;
 
-	
+
 	//inserisci il processo nella coda dei pronti
 	enq(procCount,processi, &pronti);
 	procCount++;
@@ -178,7 +178,7 @@ OSExitAtomic(sreg);
 void Scheduler(){
 	//restituisce l'indice del prossimo processo da eseguire ma non lo rimuove
 	unsigned char nextRun=prossimo_processo(&pronti);
-	
+
 	//controllo se la coda non è vuota
 	if(nextRun != 255){
 		//se c'è un processo schedulabile lo levo dalla coda
@@ -187,16 +187,16 @@ void Scheduler(){
 		if(running!=255 && nextRun !=  running)
 		{
 			processi[running].sp=current_stack_pointer;//salvo nel pcb lo stack pointer salvato da SAVE_CONTEXT
-			
+
 			// metto nella coda il processo running
 				enq(running,processi, &pronti);
 		}
 
 		current_stack_pointer=processi[nextRun].sp;//salvo il nuovo stack pointer nella variabile usata da RESTORE_CONTEXT
 		running=nextRun;
-		
+
 	}
-	
+
 }
 //funzione inline(importante)
 inline void run_processo(){
@@ -207,7 +207,7 @@ inline void run_processo(){
 		SetStack();
         //setto le variabile usate da pushretaddress
 		funzione=(unsigned long) processi[running].funz;
-		
+
 		//istruzioni assembly per settare funzione e argomento
 		PushRetAddress();
 		sei();
@@ -227,7 +227,7 @@ void _OS_change(){
     run_processo();
 }
 
-//funzione usata a livello utente in modo cooperativo per cambiare processo 
+//funzione usata a livello utente in modo cooperativo per cambiare processo
 void OS_change()
 {
 	csreg = SREG;

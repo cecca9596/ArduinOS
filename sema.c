@@ -1,33 +1,44 @@
 #include "sema.h"
 
 void OSSem_init(TOSSema *sema, unsigned int initval, unsigned char binario){
+  unsigned char csreg;
+	OSMakeAtomic(&csreg);
   sema->binario = binario;
 
-  if (!binario)
+  if(!binario)
     sema->semaval = initval;
-  else
-    else if(initval)
+  else if(initval){
       sema->semaval = 1;
-    else
+    }
+    else{
       sema->semaval = 0;
-
+    }
   //inizializza la coda dei processi in attesa al semaforo
-  initQ(sema->listaProcessi, OSMAX_TASKS, &sema->codaProcessi);
+  init_coda(sema->listaProcessi, OSMAX_TASKS, &sema->codaProcessi);
+  OSExitAtomic(csreg);
 }
 
 void OSSem_wait(TOSSema *sema){
+  unsigned char csreg;
+	OSMakeAtomic(&csreg);
   if(sema->semaval>0)
     sema->semaval--;
-  else
+  else{
     //blocca processo corrente e mettilo in coda
     processi[running].status |= _OS_BLOCKED;
-    prioEnq(running, processi, &sema->codaProcessi);
+    enq(running, processi, &sema->codaProcessi);
+    OSExitAtomic(csreg);
 
     //chiama lo scheduler
     OS_change();
+  }
+  OSExitAtomic(csreg);
 }
 
 void OSSem_post(TOSSema *sema){
+  unsigned char csreg;
+  OSMakeAtomic(&csreg);
+
   unsigned char wakeProc= procDeq(&sema->codaProcessi);
 
   if(wakeProc != 255){
@@ -35,7 +46,8 @@ void OSSem_post(TOSSema *sema){
     processi[wakeProc].status &= ~(_OS_BLOCKED);
 
     //rimetti in coda ready il processo
-    procEnq(wakeProc, processi, &pronti);
+    enq(wakeProc, processi, &pronti);
+    OSExitAtomic(csreg);
 
     //chiama lo scheduler
 		OS_change();
@@ -44,4 +56,5 @@ void OSSem_post(TOSSema *sema){
     sema->semaval=1;
   else
     sema->semaval++;
+  OSExitAtomic(csreg);
 }
